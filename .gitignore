@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Production Build
+dist/
+build/
+coverage/
+
+# Environment & Credentials
+.env*
+!.env.example
+.vercel/
+
+# Logs & System
+*.log
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+*.png
+test_*.py
+inspect_dom.py
+get_rules.py
+cdp_styles.py
+capture_themes.py
+verify_all_pages.py

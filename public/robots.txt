@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Host
+Host: https://forgetechnologies.vercel.app
+
+# Sitemaps
+Sitemap: https://forgetechnologies.vercel.app/sitemap.xml

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forge Technologies — Custom Web, Mobile &amp; AI Solutions</title>
+    <meta
+      name="description"
+      content="Forge Technologies builds high-craft web apps, mobile solutions, custom software, and AI automation for startups and retail businesses. Get a tailored quote."
+    />
+    <meta
+      name="keywords"
+      content="Forge Technologies, web development, custom software engineering, startup MVP, retail digital systems, mobile app development, AI automation, React, TypeScript, Java software, computer vision"
+    />
+    <meta name="author" content="Forge Technologies" />
+    <meta name="publisher" content="Forge Technologies" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://forgetechnologies.vercel.app/" />
+
+    <!-- Open Graph / Facebook / LinkedIn / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Forge Technologies" />
+    <meta property="og:url" content="https://forgetechnologies.vercel.app/" />
+    <meta property="og:title" content="Forge Technologies — Custom Web, Mobile &amp; AI Solutions" />
+    <meta
+      property="og:description"
+      content="High-craft custom software, web platforms, mobile apps, and AI automation tailored for startups and retail businesses."
+    />
+    <meta property="og:image" content="https://forgetechnologies.vercel.app/assets/projects/forge_logo_metallic.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Forge Technologies — Digital Engineering &amp; Solutions" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://forgetechnologies.vercel.app/" />
+    <meta name="twitter:title" content="Forge Technologies — Custom Web, Mobile &amp; AI Solutions" />
+    <meta
+      name="twitter:description"
+      content="High-craft custom software, web platforms, mobile apps, and AI automation tailored for startups and retail businesses."
+    />
+    <meta name="twitter:image" content="https://forgetechnologies.vercel.app/assets/projects/forge_logo_metallic.png" />
+
+    <!-- Structured Data: Schema.org Graph -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://forgetechnologies.vercel.app/#website",
+          "url": "https://forgetechnologies.vercel.app/",
+          "name": "Forge Technologies",
+          "alternateName": ["Forge Tech", "Forge Technologies Studio", "ForgeTechnologies"],
+          "description": "High-craft custom software, web platforms, mobile apps, and AI automation tailored for startups and retail businesses.",
+          "inLanguage": "en-US",
+          "publisher": {
+            "@id": "https://forgetechnologies.vercel.app/#organization"
+          }
+        },
+        {
+          "@type": "ProfessionalService",
+          "@id": "https://forgetechnologies.vercel.app/#organization",
+          "name": "Forge Technologies",
+          "url": "https://forgetechnologies.vercel.app/",
+          "logo": "https://forgetechnologies.vercel.app/assets/projects/forge_logo_metallic.png",
+          "image": "https://forgetechnologies.vercel.app/assets/projects/forge_logo_metallic.png",
+          "description": "Premium engineering and digital solutions for startups and retail businesses.",
+          "email": "contact.forgetechnologies@gmail.com",
+          "sameAs": [
+            "https://www.instagram.com/forge_technologies"
+          ],
+          "priceRange": "$$",
+          "areaServed": "Worldwide",
+          "knowsAbout": [
+            "Web Development",
+            "Mobile App Development",
+            "AI Automation",
+            "Computer Vision & YOLO",
+            "Java Software Engineering",
+            "Full-Stack Development",
+            "UI/UX & Branding Systems"
+          ],
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Engineering & Digital Services",
+            "itemListElement": [
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Custom Website & Frontend Development"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Mobile Application Engineering"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Applied AI & Computer Vision Pipelines"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Enterprise Java Software Systems"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Brand Identity & Design Systems"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+    </script>
+    <meta name="theme-color" content="#070B12" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('forge-theme');
+          var isLight = stored === 'light' || (stored === 'system' && window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          if (isLight) {
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+            var themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) themeColor.setAttribute('content', '#F8FAFC');
+          } else {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
+            var themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) themeColor.setAttribute('content', '#070B12');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-[#F8FAFC] dark:bg-[#070B12] text-slate-900 dark:text-slate-100 antialiased selection:bg-sky-100 selection:text-sky-900 min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
