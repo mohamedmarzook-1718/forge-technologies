@@ -26,7 +26,7 @@ Forge Technologies has been upgraded into an extraordinary digital product studi
 | **Interactive 3D Graphics** | WebGL Three.js GLB Emblem | Custom model `public/models/fforge.glb` |
 | **Theme Engine** | System / Light / Dark | `localStorage` persistence (`forge-theme`) |
 | **Active Routes** | **10 Routes** | Client-side pushState + hash fallback |
-| **Form Inquiries** | Web3Forms REST API + Failover | Integrated with mailto & clipboard fallback |
+| **Form Inquiries** | Resend API + Vercel Serverless Function (`/api/contact`) | Verified delivery, auto-confirmations, anti-spam rate limiting |
 
 ---
 
@@ -251,4 +251,4 @@ graph TD
   - Integrated in `index.html` with inline pre-hydration script to eliminate theme flickering (FOUT).
   - Synchronized across OS preferences (`prefers-color-scheme`) and user manual toggle.
 * **Form Submission**:
-  - Web3Forms API asynchronously posts client inquiries with validation, status banners, and multi-tier email client fallbacks.
+  - Resend Email Service integrated with serverless route `/api/contact`. Includes client & server validation, rich HTML branding, client auto-confirmation receipts, and anti-spam duplicate prevention.

@@ -50,7 +50,7 @@ export const PoliciesPage: React.FC = () => {
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed pt-2">
             As a freelance digital engineering studio, we protect our clients with transparent contracts.
             Below you will find our comprehensive terms of service, 100% intellectual property handover guarantee,
-            Web3Forms privacy disclosures, and fair milestone refund frameworks.
+            encrypted form privacy disclosures, and fair milestone refund frameworks.
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export const PoliciesPage: React.FC = () => {
             }`}
           >
             <Lock className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Privacy & Web3Forms Policy</span>
+            <span>Privacy & Communication Policy</span>
           </button>
 
           <button
@@ -195,7 +195,7 @@ export const PoliciesPage: React.FC = () => {
                   </h3>
                   <p className="text-slate-600 text-sm leading-relaxed">
                     We ensure you own your infrastructure. Domain registrations, hosting accounts (Vercel, GitHub Pages, Cloudflare, AWS),
-                    payment gateways (Stripe), and API services (Web3Forms, OpenAI) are created directly in your company's name.
+                    payment gateways (Stripe), and API services (Resend, OpenAI) are created directly in your company's name.
                     Forge Technologies never serves as an opaque middleman holding client hosting or DNS hostage.
                   </p>
                 </div>
@@ -261,12 +261,11 @@ export const PoliciesPage: React.FC = () => {
 
                 <div className="space-y-3">
                   <h3 className="font-heading text-lg font-bold text-slate-900">
-                    2. Web3Forms Service Processing
+                    2. Secure Form Transmission & Delivery
                   </h3>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Inquiries dispatched through our website form are transmitted using <strong>Web3Forms</strong>, an encrypted,
-                    GDPR-compliant form routing API. Web3Forms validates the submission and delivers it directly to our official
-                    monitored inbox (<code className="font-mono-code text-xs bg-slate-100 px-1.5 py-0.5 rounded text-sky-700">contact.forgetechnologies@gmail.com</code>).
+                    Inquiries dispatched through our website forms are transmitted using our encrypted, authenticated
+                    serverless pipeline directly to our official monitored inbox (<code className="font-mono-code text-xs bg-slate-100 px-1.5 py-0.5 rounded text-sky-700">contact.forgetechnologies@gmail.com</code>).
                     Submissions are not stored in public databases or mined for ad targeting.
                   </p>
                 </div>

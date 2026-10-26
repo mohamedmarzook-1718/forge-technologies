@@ -124,17 +124,29 @@ If deploying to a GitHub Pages repository subfolder:
 
 ---
 
-## How the Static Contact Form Works
+## Production Email Delivery Pipeline (Resend + Vercel Serverless)
 
-Because this site is built purely for static hosting without databases or server dependencies:
+The application features a secure, production-grade email delivery pipeline powered by **Resend** and **Vercel Serverless Functions**:
 
-1. When a visitor fills out the Project Requirements form, client-side validation checks required fields (Name, Email, Service, Description).
-2. Upon clicking **"Prepare & Send Project Brief"**, the application formats the data into a structured brief.
-3. It triggers a `mailto:contact.forgetechnologies@gmail.com` URI with pre-encoded subject and body lines.
-4. For users whose operating system does not have a default desktop email client configured:
-   - A **"Copy Brief to Clipboard"** button allows 1-click copying.
-   - An **"Open in Gmail Web"** button generates a direct link to compose in Gmail in the browser.
-5. Visitors are explicitly informed that no data is retained or stored on external servers, providing complete transparency and privacy.
+1. **Direct Backend API Route (`/api/contact`)**:
+   - The frontend validates form inputs client-side, enforces rate-limiting/duplicate submission prevention, and posts to `/api/contact`.
+   - The serverless handler validates all required fields, enforces HTTPS security, and constructs both plain text and rich HTML emails.
+2. **Reliable Studio Notification**:
+   - Dispatches a formatted notification email directly to `contact.forgetechnologies@gmail.com` with `replyTo` set to the client's email for 1-click direct response.
+3. **Automated Client Confirmation**:
+   - Sends a confirmation receipt email to the client acknowledging their submission and providing a permanent record of their inquiry.
+4. **Resilience & Fallbacks**:
+   - If network or API delivery fails, clear error diagnostics are presented without ever displaying false success screens.
+   - Users can copy their formatted brief to the clipboard or open it in Gmail with a single click.
+
+### Environment Variables
+Configure the following variables in **Vercel Project Settings → Environment Variables** (and locally in `.env.local`):
+
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `RESEND_API_KEY` | **Required**: API key from [resend.com/api-keys](https://resend.com/api-keys) | `re_123456789_abcdef...` |
+| `FROM_EMAIL` | Sender address (verified domain or sandbox) | `Forge Technologies <onboarding@resend.dev>` |
+| `TO_EMAIL` | Intended recipient studio inbox | `contact.forgetechnologies@gmail.com` |
 
 ---
 

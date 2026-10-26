@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Mail,
   Instagram,
@@ -7,15 +7,11 @@ import {
   CheckCircle2,
   ExternalLink,
   AlertCircle,
-  HelpCircle,
-  MessageSquare,
-  Clock,
   Sparkles,
   ShieldCheck,
   Loader2,
-  Key,
-  Terminal,
-  IndianRupee
+  IndianRupee,
+  RefreshCw
 } from 'lucide-react';
 import { useRouter } from '../router';
 import { SERVICES } from '../data/services';
@@ -25,10 +21,7 @@ import { BudgetCalculator } from '../components/BudgetCalculator';
 
 export const ContactPage: React.FC = () => {
   const { searchParams } = useRouter();
-
-  // Environment access key
-  const envKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY || '';
-  const isEnvKeyConfigured = envKey && envKey !== 'YOUR_WEB3FORMS_ACCESS_KEY' && envKey.trim().length > 0;
+  const isSubmittingRef = useRef(false);
 
   // Form state
   const [formData, setFormData] = useState<ProjectBriefForm>({
@@ -41,21 +34,20 @@ export const ContactPage: React.FC = () => {
     description: '',
   });
 
-  // Custom key override state if client needs to paste it directly
-  const [customKey, setCustomKey] = useState<string>(isEnvKeyConfigured ? envKey : '');
-  const [showKeyInput, setShowKeyInput] = useState<boolean>(!isEnvKeyConfigured);
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submissionSuccess, setSubmissionSuccess] = useState<boolean>(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [confirmationNotice, setConfirmationNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
   // Sync service and budget from URL search parameters if passed
   useEffect(() => {
     const preselectedServiceId = searchParams.get('service');
     if (preselectedServiceId) {
-      const matched = SERVICES.find((s) => s.id === preselectedServiceId || s.title.toLowerCase() === preselectedServiceId.toLowerCase());
+      const matched = SERVICES.find(
+        (s) => s.id === preselectedServiceId || s.title.toLowerCase() === preselectedServiceId.toLowerCase()
+      );
       if (matched) {
         setFormData((prev) => ({ ...prev, service: matched.title }));
       }
@@ -71,11 +63,13 @@ export const ContactPage: React.FC = () => {
 
     if (!formData.name.trim()) {
       newErrors.name = 'Please enter your name.';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters long.';
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Please enter your email address.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Please enter a valid email address.';
     }
 
@@ -85,8 +79,8 @@ export const ContactPage: React.FC = () => {
 
     if (!formData.description.trim()) {
       newErrors.description = 'Please provide a brief description of your project or requirements.';
-    } else if (formData.description.trim().length < 15) {
-      newErrors.description = 'Please share a few more details (minimum 15 characters).';
+    } else if (formData.description.trim().length < 10) {
+      newErrors.description = 'Please share a few more details (minimum 10 characters).';
     }
 
     setErrors(newErrors);
@@ -120,71 +114,76 @@ export const ContactPage: React.FC = () => {
       ``,
       `Looking forward to your response.`,
       `Best regards,`,
-      formData.name
+      formData.name,
     ].join('\n');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
 
-    setSubmissionError(null);
-    const activeKey = customKey.trim() || envKey.trim();
-
-    // If an access key exists, submit via Web3Forms API
-    if (activeKey && activeKey !== 'YOUR_WEB3FORMS_ACCESS_KEY') {
-      setIsSubmitting(true);
-      try {
-        const response = await fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            access_key: activeKey,
-            subject: generateEmailSubject(),
-            from_name: `${formData.name} (Forge Technologies Inquiry)`,
-            name: formData.name,
-            email: formData.email,
-            business_name: formData.businessName || 'N/A',
-            service_requested: formData.service,
-            estimated_budget: formData.budgetRange || 'Flexible',
-            target_timeline: formData.timeline || 'Flexible',
-            message: formData.description,
-            brief_full_text: generateEmailBody(),
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.status === 200 && data.success) {
-          setIsSubmitting(false);
-          setSubmissionSuccess(true);
-          return;
-        } else {
-          setIsSubmitting(false);
-          setSubmissionError(
-            data.message || 'Web3Forms API key verification failed. You can still send via mailto or copy below.'
-          );
-          setSubmissionSuccess(true);
-          return;
-        }
-      } catch (err) {
-        setIsSubmitting(false);
-        setSubmissionError(
-          'Network connection to Web3Forms could not be completed. Your pre-formatted email brief is ready below!'
-        );
-        setSubmissionSuccess(true);
-        return;
-      }
+    if (isSubmittingRef.current || isSubmitting) {
+      return;
     }
 
-    // Fallback: trigger native mailto if no API key is specified
-    const subject = encodeURIComponent(generateEmailSubject());
-    const body = encodeURIComponent(generateEmailBody());
-    window.location.href = `mailto:contact.forgetechnologies@gmail.com?subject=${subject}&body=${body}`;
-    setSubmissionSuccess(true);
+    if (!validate()) {
+      return;
+    }
+
+    setSubmissionError(null);
+    setConfirmationNotice(null);
+    setIsSubmitting(true);
+    isSubmittingRef.current = true;
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          businessName: formData.businessName.trim(),
+          service: formData.service,
+          budgetRange: formData.budgetRange,
+          timeline: formData.timeline,
+          description: formData.description.trim(),
+          type: 'project_brief',
+        }),
+      });
+
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        throw new Error('Server returned an unparseable response.');
+      }
+
+      if (response.ok && data.success) {
+        setSubmissionSuccess(true);
+        setSubmissionError(null);
+        if (data.confirmationSent) {
+          setConfirmationNotice(`A confirmation copy was also sent to ${formData.email}.`);
+        }
+      } else {
+        // Explicitly handle failure: NEVER show success when delivery failed
+        setSubmissionSuccess(false);
+        const errorMsg =
+          data.error ||
+          (data.details && Object.values(data.details).join(' ')) ||
+          'Failed to transmit inquiry to server. Please try again.';
+        setSubmissionError(errorMsg);
+      }
+    } catch (err: any) {
+      setSubmissionSuccess(false);
+      setSubmissionError(
+        err.message || 'Network connection failed. Please check your internet connection or use direct email below.'
+      );
+    } finally {
+      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+    }
   };
 
   const handleCopyToClipboard = async () => {
@@ -210,7 +209,7 @@ export const ContactPage: React.FC = () => {
         <div className="max-w-3xl space-y-4">
           <div className="flex items-center gap-2 text-xs font-mono-code text-sky-700 uppercase tracking-widest font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-sky-600" aria-hidden="true" />
-            <span>Fast Inquiries · Web3Forms Enabled</span>
+            <span>Fast Inquiries · Verified Direct Pipeline</span>
           </div>
           <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 leading-[1.12]">
             Let's build something remarkable together.
@@ -330,44 +329,15 @@ export const ContactPage: React.FC = () => {
               </ul>
             </div>
 
-            {/* Web3Forms Architecture Note */}
+            {/* Secure Infrastructure Note */}
             <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-600 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600" aria-hidden="true" />
-                  Form Delivery: Web3Forms
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowKeyInput(!showKeyInput)}
-                  className="text-[11px] text-sky-700 hover:underline flex items-center gap-1 font-mono-code font-semibold"
-                >
-                  <Key className="w-3 h-3" />
-                  <span>{showKeyInput ? 'Hide Key' : 'Configure API Key'}</span>
-                </button>
+              <div className="flex items-center gap-1.5 font-semibold text-slate-900">
+                <ShieldCheck className="w-4 h-4 text-sky-600" aria-hidden="true" />
+                <span>Production Email Infrastructure</span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Forms submit securely via the official Web3Forms API directly into our verified inbox. No data is stored
-                in third-party databases.
+                Client inquiries are routed through our authenticated serverless pipeline directly into our verified studio inbox (<code className="text-sky-700 font-mono-code">contact.forgetechnologies@gmail.com</code>). All transmissions are SSL encrypted and confidential.
               </p>
-              {showKeyInput && (
-                <div className="pt-2 border-t border-slate-200 space-y-1.5">
-                  <label htmlFor="customKeyInput" className="block text-[11px] font-mono-code text-slate-700 font-semibold">
-                    Web3Forms Access Key:
-                  </label>
-                  <input
-                    type="text"
-                    id="customKeyInput"
-                    value={customKey}
-                    onChange={(e) => setCustomKey(e.target.value)}
-                    placeholder="Enter your Web3Forms access key..."
-                    className="w-full px-2.5 py-1.5 text-xs font-mono-code bg-white rounded border border-slate-300 text-slate-900 focus:border-slate-900"
-                  />
-                  <p className="text-[10px] text-slate-500">
-                    Can also be provided via <code className="text-sky-700">VITE_WEB3FORMS_ACCESS_KEY</code> in .env.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -380,7 +350,7 @@ export const ContactPage: React.FC = () => {
                     Project Requirements Brief
                   </h2>
                   <span className="font-mono-code text-[11px] text-sky-800 dark:text-sky-300 bg-sky-50 dark:bg-sky-950 px-2.5 py-0.5 rounded-full border border-sky-300 dark:border-sky-800 font-semibold">
-                    Web3Forms Active
+                    Direct Studio Pipeline
                   </span>
                 </div>
                 <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">
@@ -397,23 +367,24 @@ export const ContactPage: React.FC = () => {
                     </div>
                     <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
                       Thank you, <strong>{formData.name}</strong>. Your project brief for{' '}
-                      <strong>{formData.service}</strong> has been transmitted. We will review the requirements
+                      <strong>{formData.service}</strong> has been transmitted to our engineering team at{' '}
+                      <strong>contact.forgetechnologies@gmail.com</strong>. We will review your requirements
                       and get back to you at <strong>{formData.email}</strong> within 24 to 48 hours.
                     </p>
+                    {confirmationNotice && (
+                      <p className="text-xs text-sky-800 dark:text-sky-200 font-medium pt-1">
+                        ✓ {confirmationNotice}
+                      </p>
+                    )}
                     {formData.budgetRange && (
                       <div className="flex items-center gap-2 pt-1 font-mono-code text-xs text-sky-950 dark:text-sky-200">
                         <IndianRupee className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
                         <span>Estimated Budget Scope: <strong className="font-bold">{formData.budgetRange}</strong></span>
                       </div>
                     )}
-                    {submissionError && (
-                      <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded border border-amber-200 mt-2">
-                        {submissionError}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Fallback actions if the user wants an instant copy or email receipt */}
+                  {/* Direct Backup & Record Options */}
                   <div className="space-y-3 pt-2">
                     <p className="font-mono-code text-xs uppercase tracking-wider text-slate-500 font-semibold">
                       Direct Backup & Record Options
@@ -422,11 +393,11 @@ export const ContactPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleCopyToClipboard}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-md transition-colors"
                       >
                         {copied ? (
                           <>
-                            <CheckCircle2 className="w-4 h-4 text-sky-600" aria-hidden="true" />
+                            <CheckCircle2 className="w-4 h-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                             <span>Copied to Clipboard!</span>
                           </>
                         ) : (
@@ -441,7 +412,7 @@ export const ContactPage: React.FC = () => {
                         href={getGmailWebUrl()}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 rounded-md transition-colors"
                       >
                         <span>Open in Gmail Web</span>
                         <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
@@ -454,7 +425,7 @@ export const ContactPage: React.FC = () => {
                     <p className="font-mono-code text-xs uppercase tracking-wider text-slate-500 font-semibold">
                       Your Submitted Brief
                     </p>
-                    <pre className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs font-mono-code whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                    <pre className="p-4 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono-code whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
                       {generateEmailBody()}
                     </pre>
                   </div>
@@ -464,6 +435,8 @@ export const ContactPage: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setSubmissionSuccess(false);
+                        setSubmissionError(null);
+                        setConfirmationNotice(null);
                         setFormData({
                           name: '',
                           email: '',
@@ -474,18 +447,44 @@ export const ContactPage: React.FC = () => {
                           description: '',
                         });
                       }}
-                      className="text-xs text-sky-700 hover:underline font-semibold"
+                      className="inline-flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-400 hover:underline font-semibold"
                     >
-                      ← Submit another inquiry
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Submit another inquiry</span>
                     </button>
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                  {/* Global Server Error Alert */}
+                  {submissionError && (
+                    <div
+                      role="alert"
+                      className="p-4 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-red-900 dark:text-red-200 space-y-2 animate-in fade-in duration-200"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-semibold text-red-800 dark:text-red-300">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
+                        <span>Submission Encountered an Issue</span>
+                      </div>
+                      <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
+                        {submissionError}
+                      </p>
+                      <div className="pt-1 text-[11px] text-red-600 dark:text-red-400 border-t border-red-200 dark:border-red-800/80">
+                        Need immediate assistance? You can also email us directly at{' '}
+                        <a
+                          href="mailto:contact.forgetechnologies@gmail.com"
+                          className="font-bold underline hover:text-red-900 dark:hover:text-red-100"
+                        >
+                          contact.forgetechnologies@gmail.com
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Name & Email */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="name" className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label htmlFor="name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Your Full Name *
                       </label>
                       <input
@@ -497,14 +496,14 @@ export const ContactPage: React.FC = () => {
                           if (errors.name) setErrors({ ...errors, name: undefined });
                         }}
                         placeholder="e.g. Alex Morgan"
-                        className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 bg-white placeholder:text-slate-400 transition-colors focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                          errors.name ? 'border-red-400 bg-red-50' : 'border-slate-300'
+                        className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 placeholder:text-slate-400 transition-colors focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                          errors.name ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-slate-300 dark:border-slate-700'
                         }`}
                         aria-invalid={!!errors.name}
                         aria-describedby={errors.name ? 'name-error' : undefined}
                       />
                       {errors.name && (
-                        <p id="name-error" className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                        <p id="name-error" className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           <span>{errors.name}</span>
                         </p>
@@ -512,7 +511,7 @@ export const ContactPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label htmlFor="email" className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label htmlFor="email" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Work / Personal Email *
                       </label>
                       <input
@@ -524,14 +523,14 @@ export const ContactPage: React.FC = () => {
                           if (errors.email) setErrors({ ...errors, email: undefined });
                         }}
                         placeholder="e.g. alex@company.com"
-                        className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 bg-white placeholder:text-slate-400 transition-colors focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                          errors.email ? 'border-red-400 bg-red-50' : 'border-slate-300'
+                        className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 placeholder:text-slate-400 transition-colors focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                          errors.email ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-slate-300 dark:border-slate-700'
                         }`}
                         aria-invalid={!!errors.email}
                         aria-describedby={errors.email ? 'email-error' : undefined}
                       />
                       {errors.email && (
-                        <p id="email-error" className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                        <p id="email-error" className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           <span>{errors.email}</span>
                         </p>
@@ -542,7 +541,7 @@ export const ContactPage: React.FC = () => {
                   {/* Business Name & Service Requested */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="businessName" className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label htmlFor="businessName" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Business or Store Name <span className="text-slate-500 font-normal">(Optional)</span>
                       </label>
                       <input
@@ -551,12 +550,12 @@ export const ContactPage: React.FC = () => {
                         value={formData.businessName}
                         onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                         placeholder="e.g. Artisan Goods Boutique"
-                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500"
+                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 placeholder:text-slate-400 focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="service" className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label htmlFor="service" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Service of Interest *
                       </label>
                       <select
@@ -566,8 +565,8 @@ export const ContactPage: React.FC = () => {
                           setFormData({ ...formData, service: e.target.value });
                           if (errors.service) setErrors({ ...errors, service: undefined });
                         }}
-                        className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 bg-white transition-colors focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                          errors.service ? 'border-red-400 bg-red-50' : 'border-slate-300'
+                        className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 transition-colors focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                          errors.service ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-slate-300 dark:border-slate-700'
                         }`}
                         aria-invalid={!!errors.service}
                         aria-describedby={errors.service ? 'service-error' : undefined}
@@ -584,7 +583,7 @@ export const ContactPage: React.FC = () => {
                         <option value="Custom Software / AI Consulting">Custom Software / AI Consulting</option>
                       </select>
                       {errors.service && (
-                        <p id="service-error" className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                        <p id="service-error" className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           <span>{errors.service}</span>
                         </p>
@@ -604,7 +603,7 @@ export const ContactPage: React.FC = () => {
                         id="budgetRange"
                         value={formData.budgetRange}
                         onChange={(e) => setFormData({ ...formData, budgetRange: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-900 focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 transition-colors"
+                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 transition-colors"
                       >
                         <option value="">Select a ballpark range...</option>
                         {BUDGET_TIERS.map((tier) => (
@@ -626,7 +625,7 @@ export const ContactPage: React.FC = () => {
                         id="timeline"
                         value={formData.timeline}
                         onChange={(e) => setFormData({ ...formData, timeline: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-900 focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 transition-colors"
+                        className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 transition-colors"
                       >
                         <option value="">Select timeline...</option>
                         <option value="Urgent (1–2 weeks)">Urgent (1–2 weeks)</option>
@@ -639,7 +638,7 @@ export const ContactPage: React.FC = () => {
 
                   {/* Project Description */}
                   <div>
-                    <label htmlFor="description" className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label htmlFor="description" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Project Description & Requirements *
                     </label>
                     <textarea
@@ -650,15 +649,15 @@ export const ContactPage: React.FC = () => {
                         setFormData({ ...formData, description: e.target.value });
                         if (errors.description) setErrors({ ...errors, description: undefined });
                       }}
-                      placeholder="Tell us what you'd like to build, any key features, preferred design style, reference websites, or goals..."
-                      className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 bg-white placeholder:text-slate-400 transition-colors focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 resize-none ${
-                        errors.description ? 'border-red-400 bg-red-50' : 'border-slate-300'
+                      placeholder="Tell us what you'd like to build, key features, preferred design style, reference websites, or business goals..."
+                      className={`w-full px-3.5 py-2.5 rounded-md border text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-950 placeholder:text-slate-400 transition-colors focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 resize-none ${
+                        errors.description ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-slate-300 dark:border-slate-700'
                       }`}
                       aria-invalid={!!errors.description}
                       aria-describedby={errors.description ? 'description-error' : undefined}
                     />
                     {errors.description && (
-                      <p id="description-error" className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                      <p id="description-error" className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                         <span>{errors.description}</span>
                       </p>
@@ -666,15 +665,15 @@ export const ContactPage: React.FC = () => {
                   </div>
 
                   {/* Policy Acceptance Notice */}
-                  <div className="pt-1 flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
-                    <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" aria-hidden="true" />
+                  <div className="pt-1 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <ShieldCheck className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" aria-hidden="true" />
                     <span>
                       By submitting this brief, you agree to our{' '}
-                      <a href="/policies" className="text-sky-700 underline hover:text-sky-900 font-medium">
+                      <a href="/policies" className="text-sky-700 dark:text-sky-400 underline hover:text-sky-900 dark:hover:text-sky-300 font-medium">
                         Client Service Terms
                       </a>{' '}
                       and{' '}
-                      <a href="/policies#privacy" className="text-sky-700 underline hover:text-sky-900 font-medium">
+                      <a href="/policies#privacy" className="text-sky-700 dark:text-sky-400 underline hover:text-sky-900 dark:hover:text-sky-300 font-medium">
                         Privacy Policy
                       </a>
                       . Your brief is transmitted confidentially.
@@ -686,16 +685,16 @@ export const ContactPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full inline-flex items-center justify-center px-6 py-3.5 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-70 rounded-md transition-all shadow-xs focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      className="w-full inline-flex items-center justify-center px-6 py-3.5 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-md transition-all shadow-xs focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                     >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" />
-                          <span>Submitting brief via Web3Forms...</span>
+                          <span>Sending project brief to engineering team...</span>
                         </>
                       ) : (
                         <>
-                          <span>Submit Project Brief via Web3Forms</span>
+                          <span>Submit Project Brief</span>
                           <Send className="ml-2 w-4 h-4" aria-hidden="true" />
                         </>
                       )}

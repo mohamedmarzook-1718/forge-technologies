@@ -11,26 +11,55 @@ import {
   Clock,
   Compass,
   Terminal,
-  ShieldCheck
+  ShieldCheck,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Link } from '../router';
 
 export const ProductsPage: React.FC = () => {
   const [notifyEmail, setNotifyEmail] = useState('');
   const [productIdea, setProductIdea] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleInterestSubmit = (e: React.FormEvent) => {
+  const handleInterestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!notifyEmail || !notifyEmail.includes('@')) return;
+    if (!notifyEmail || !notifyEmail.includes('@') || isSubmitting) return;
 
-    // Static site handler: generates pre-filled mailto
-    const subject = encodeURIComponent(`Product Lab Inquiry / Early Access – ${notifyEmail}`);
-    const body = encodeURIComponent(
-      `Hello Forge Technologies team,\n\nI would like to be notified when Forge Technologies releases software products and internal tools.\n\nEmail: ${notifyEmail}\nFeedback / Tool Idea: ${productIdea || 'None provided'}\n\nRegards.`
-    );
-    window.location.href = `mailto:contact.forgetechnologies@gmail.com?subject=${subject}&body=${body}`;
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'Product Lab Early Access Subscriber',
+          email: notifyEmail.trim(),
+          service: 'Internal Product Lab / Early Access Interest',
+          description: productIdea.trim() || 'User registered for early access notifications on upcoming Forge Technologies tools.',
+          type: 'product_interest',
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success) {
+        setSubmitted(true);
+        setSubmitError(null);
+      } else {
+        setSubmitError(data.error || 'Failed to submit interest. Please try again.');
+      }
+    } catch (err: any) {
+      setSubmitError(err.message || 'Network error occurred while submitting.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -183,19 +212,26 @@ export const ProductsPage: React.FC = () => {
           </div>
 
           {submitted ? (
-            <div className="p-5 rounded-lg bg-sky-50 border border-sky-200 text-sky-900 text-sm flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-sky-600 shrink-0" aria-hidden="true" />
+            <div className="p-5 rounded-lg bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-900 dark:text-sky-200 text-sm flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0" aria-hidden="true" />
               <div>
-                <p className="font-semibold">Thank you for your interest.</p>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Your mail client has been opened with your note. We review every tool suggestion carefully.
+                <p className="font-semibold">Thank you for your interest!</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  We've received your note and registered {notifyEmail} for early access updates on upcoming releases.
                 </p>
               </div>
             </div>
           ) : (
             <form onSubmit={handleInterestSubmit} className="space-y-4">
+              {submitError && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
               <div>
-                <label htmlFor="notifyEmail" className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="notifyEmail" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Your Email Address *
                 </label>
                 <input
@@ -205,12 +241,12 @@ export const ProductsPage: React.FC = () => {
                   value={notifyEmail}
                   onChange={(e) => setNotifyEmail(e.target.value)}
                   placeholder="name@business.com"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500"
+                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500"
                 />
               </div>
 
               <div>
-                <label htmlFor="productIdea" className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="productIdea" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   What kind of tool or automation would help your business? (Optional)
                 </label>
                 <textarea
@@ -219,20 +255,30 @@ export const ProductsPage: React.FC = () => {
                   value={productIdea}
                   onChange={(e) => setProductIdea(e.target.value)}
                   placeholder="e.g. A lightweight tool to sync store inventory with our website..."
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:border-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:border-slate-900 dark:focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 resize-none"
                 />
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                <p className="text-[11px] font-mono-code text-slate-500">
-                  Static action · Opens mailto to contact.forgetechnologies@gmail.com
+                <p className="text-[11px] font-mono-code text-slate-500 dark:text-slate-400">
+                  Encrypted direct pipeline · contact.forgetechnologies@gmail.com
                 </p>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center px-5 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors shadow-xs whitespace-nowrap"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center px-5 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-md transition-colors shadow-xs whitespace-nowrap"
                 >
-                  <span>Submit interest</span>
-                  <Send className="ml-1.5 w-3.5 h-3.5" aria-hidden="true" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit interest</span>
+                      <Send className="ml-1.5 w-3.5 h-3.5" aria-hidden="true" />
+                    </>
+                  )}
                 </button>
               </div>
             </form>
